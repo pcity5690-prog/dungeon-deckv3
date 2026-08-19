@@ -688,6 +688,7 @@ function modalCardChoices(title,text,cards,callback){
 }
 
 function winCombat(){
+ if(!state.enemy || !state.combat) return;
  const e=state.enemy;
  state.combat=false;
  state.playerTurn=false;
@@ -744,6 +745,19 @@ function winCombat(){
  ]);
 }
 function finishCombatRoom(){
+ const room=state.rooms[state.room];
+ // A boss room is complete once its boss is defeated. Always advance the run
+ // after the reward instead of leaving the player in the cleared boss room.
+ if(room && room.type === "boss" && room.done){
+  closeModal();
+  state.explore=null;
+  state.enemy=null;
+  state.combat=false;
+  state.exploring=false;
+  log(state.floor < 5 ? `Dungeon ${state.floor} cleared! Preparing Dungeon ${state.floor+1}.` : "All five dungeons cleared!");
+  nextRoom();
+  return;
+ }
  if(state.explore && state.explore.monsters.length>0){
   closeModal();
   resumeExploration();
@@ -852,6 +866,14 @@ function eventRoom(){
 }
 
 function nextRoom(){
+ // Prevent a stale exploration/combat state from blocking the next room.
+ state.combat=false;
+ state.exploring=false;
+ state.enemy=null;
+ state.shop=null;
+ state.block=0;
+ state.energy=state.maxEnergy;
+ state.tempEnergy=0;
  if(state.room>=state.rooms.length-1){
   if(state.floor>=5){ victory(); return; }
   state.floor++;
@@ -942,7 +964,7 @@ function render(){
 
  const map=document.getElementById("map");
  map.innerHTML="";
- const dungeonNames=["The Shadowed Depths","","The Cursed Catacombs","The Infernal Fortress","The Final Abyss"];
+ const dungeonNames=["The Shadowed Depths","The Frostbound Wilds","The Cursed Catacombs","The Infernal Fortress","The Final Abyss"];
  const dungeonLabel=document.getElementById("dungeonLabel");
  if(dungeonLabel)dungeonLabel.textContent=dungeonNames[state.floor-1];
  state.rooms.forEach((r,i)=>{
