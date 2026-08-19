@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dungeon Deck — Pixel Roguelike</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/legacy-sprites.css">
+</head>
+<body>
+<div id="classScreen" class="screenSelect">
+  <div class="selectBackdrop"></div>
+  <div class="selectTopbar"><button class="backBtn" onclick="location.reload()">BACK</button><div class="selectBadge">SIX SURVIVORS</div></div>
+  <div class="selectPanel">
+    <div class="titleOrnament">CHOOSE YOUR SURVIVOR</div>
+    <p class="selectSubtitle">Each survivor has unique cards, relics, and playstyles.</p>
+    <div class="survivorGrid">
+      <button class="survivorCard warden" data-tooltip="WARDEN\nBalanced fighter\nStrong defense and heavy strikes." onclick="selectClass('warden')">
+        <div class="survivorArt"><img src="assets/warden.svg" alt="Warden"></div><div class="survivorInfo"><h2>WARDEN</h2><p>Balanced fighter with strong defense and powerful strikes.</p><div class="relicStrip"><b>STARTING RELIC</b><span>Knight's Crest</span><small>Start battle with 8 Block</small></div><div class="cardCount">20 UNIQUE CARDS</div></div>
+      </button>
+      <button class="survivorCard rogue" data-tooltip="ROGUE\nFast, elusive attacker\nStrikes from the shadows." onclick="selectClass('rogue')">
+        <div class="survivorArt"><img src="assets/rogue.svg" alt="Rogue"></div><div class="survivorInfo"><h2>ROGUE</h2><p>Fast, elusive and deadly. Strikes from the shadows.</p><div class="relicStrip"><b>STARTING RELIC</b><span>Wolf Fang</span><small>Basic Attack +4 damage</small></div><div class="cardCount">20 UNIQUE CARDS</div></div>
+      </button>
+      <button class="survivorCard arcanist" data-tooltip="ARCANIST\nMagic and elemental power\nControl and card draw." onclick="selectClass('arcanist')">
+        <div class="survivorArt"><img src="assets/arcanist.svg" alt="Arcanist"></div><div class="survivorInfo"><h2>ARCANIST</h2><p>Wielder of magic and elemental power.</p><div class="relicStrip"><b>STARTING RELIC</b><span>Mana Crystal</span><small>+1 maximum Energy</small></div><div class="cardCount">20 UNIQUE CARDS</div></div>
+      </button>
+      <button class="survivorCard american" data-tooltip="AMERICAN\nGuns & Grit\nFirearms, traps and survival gear." onclick="selectClass('american')">
+        <div class="survivorArt"><img src="assets/american.svg" alt="American survivor"></div><div class="survivorInfo"><h2>AMERICAN</h2><p>Backwoods survivalist. Uses firearms, traps, supplies, and grit.</p><div class="relicStrip"><b>STARTING RELIC</b><span>Supply Cooler</span><small>Heal 5 HP at battle start</small></div><div class="cardCount">20 UNIQUE CARDS</div></div>
+      </button>
+      <button class="survivorCard canadian" data-tooltip="CANADIAN\nHockey & Maple\nHockey strikes, maple recovery and northern grit." onclick="selectClass('canadian')">
+        <div class="survivorArt"><img src="assets/canadian.svg" alt="Canadian survivor"></div><div class="survivorInfo"><h2>CANADIAN</h2><p>Hockey, maple power and northern grit.</p><div class="relicStrip"><b>STARTING RELIC</b><span>Maple Flask</span><small>Heal 3 HP each turn</small></div><div class="cardCount">20 UNIQUE CARDS</div></div>
+      </button>
+      <button class="survivorCard bigfoot" data-tooltip="BIGFOOT\nNature & Melee\nRaw strength and primal power." onclick="selectClass('bigfoot')">
+        <div class="survivorArt"><img src="assets/bigfoot.svg" alt="Bigfoot"></div><div class="survivorInfo"><h2>BIGFOOT</h2><p>Ancient forest guardian. Uses brute strength and nature's power.</p><div class="relicStrip"><b>STARTING RELIC</b><span>Stone Shard</span><small>3 temporary Block each turn</small></div><div class="cardCount">20 UNIQUE CARDS</div></div>
+      </button>
+    </div>
+    <div class="selectFooter"><span>120+ UNIQUE CARDS</span><span>5 DUNGEONS</span><span>FULL RUN SAVED LOCALLY</span></div>
+  </div>
+</div>
+
+<div id="game">
+  <header class="hud panelFrame">
+    <div class="hudStat hpStat"><span class="hudIcon">HP</span><div><small>HEALTH</small><b id="hp">70 / 70</b><div class="bar hpbar"><i id="hpfill"></i></div></div></div>
+    <div class="hudStat energyStat"><span class="hudIcon">EN</span><div><small>ENERGY</small><b><span id="energy">3</span> / <span id="maxEnergy">3</span></b><div class="energyPips" id="energyPips"></div></div></div>
+    <div class="hudStat goldStat"><span class="hudIcon">G</span><div><small>GOLD</small><b id="gold">20</b></div></div>
+    <div class="hudStat levelStat"><span class="hudIcon">LV</span><div><small>LEVEL</small><b id="level">1</b><div class="bar xpbar"><i id="xpfill"></i></div><small id="xp">0 / 20 XP</small></div></div>
+    <div class="hudMenu"><span>RELICS</span><span>DECK</span><span>MAP</span><button onclick="restart()">NEW RUN</button></div>
+  </header>
+
+  <aside class="leftPanel panelFrame">
+    <h3>YOUR SURVIVOR</h3><div id="miniSurvivor" class="miniSurvivor"></div>
+    <h3>RELICS</h3><div id="relics" class="loot"></div>
+    <h3>DECK</h3><div id="deckInfo" class="deckInfo"></div>
+    <button class="sideBtn" onclick="rest()">REST</button>
+  </aside>
+
+  <main class="mainPanel panelFrame">
+    <div class="roomHeader"><div><small>DUNGEON <span id="floor">1 / 5</span></small><h1 id="roomTitle">DUNGEON</h1></div><span id="roomType" class="roomType">EXPLORE</span></div>
+    <div id="exploreArea" class="exploreWrap" style="display:none"><div class="exploreHint">MOVE WITH WASD OR ARROW KEYS • WALK INTO A MONSTER TO FIGHT</div><div id="exploreGrid" class="exploreGrid"></div><div class="movePad"><button onclick="movePlayer(0,-1)">UP</button><button onclick="movePlayer(-1,0)">LEFT</button><button onclick="movePlayer(0,1)">DOWN</button><button onclick="movePlayer(1,0)">RIGHT</button></div></div>
+    <div class="battleStage"><div id="enemyBox" class="enemyBox"></div><div class="battleFloor"></div></div>
+    <div id="message" class="message">Explore the dungeon.</div>
+    <div class="combatResources"><span>BLOCK <b id="blockValue">0</b></span><span>TEMP ENERGY <b id="tempEnergy">0</b></span><span>TURN <b id="turnState">PLAYER</b></span></div>
+    <div id="cards" class="cards"></div>
+    <div class="combatControls"><button id="attackBtn" class="attackBtn" onclick="basicAttack()">BASIC ATTACK</button><button class="tempBtn" onclick="showTempEnergyInfo()">TEMP ENERGY</button><button class="endBtn" disabled>AUTO END TURN</button></div>
+    <div class="bottomHint">PLAY CARDS UNTIL YOU CANNOT PLAY ANOTHER. ENEMY ACTS WHEN YOUR TURN ENDS.</div>
+  </main>
+
+  <aside class="rightPanel panelFrame">
+    <div class="mapHeader"><h3>DUNGEON MAP</h3><span id="dungeonLabel">THE SHADOWED DEPTHS</span></div><div id="map" class="map"></div>
+    <div class="legend"><span><i class="dot enemyDot"></i>ENEMY</span><span><i class="dot eliteDot"></i>ELITE</span><span><i class="dot chestDot"></i>TREASURE</span><span><i class="dot shopDot"></i>SHOP</span><span><i class="dot bossDot"></i>BOSS</span></div>
+    <div class="intentPanel"><h3>ENEMY INTENT</h3><div id="intentBox">—</div></div>
+    <div class="roomInfo"><h3>ROOM REWARDS</h3><div id="reward">Choose a room and survive.</div></div>
+    <div class="combatLogWrap"><h3>COMBAT LOG</h3><div id="log" class="log"></div></div>
+  </aside>
+</div>
+
+<div id="overlay" class="overlay"><div class="modal panelFrame"><div class="modalTop"><span class="modalKicker">DUNGEON EVENT</span><button onclick="closeModal()">X</button></div><h2 id="modalTitle"></h2><p id="modalText"></p><div id="modalButtons" class="modalButtons"></div></div></div>
+<script src="js/game.js"></script>
+</body></html>
