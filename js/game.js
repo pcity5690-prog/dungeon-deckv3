@@ -330,6 +330,7 @@ function resumeExploration(){
  state.energy=state.maxEnergy;
  state.tempEnergy=0;
  state.block=0;
+ state.pendingBossAdvance=false;
  state.hand=[];
  state.draw=shuffle(state.deck);
  state.discard=[];
@@ -354,7 +355,7 @@ function newState(classKey="warden"){
   floor:1,gold:20,level:1,hp:data.hp,maxHp:data.hp,xp:0,nextXp:20,
   block:0,energy:3,maxEnergy:3,tempEnergy:0,rooms:[],room:0,
   deck:[...baseCards,...baseCards],draw:[],hand:[],discard:[],
-  enemy:null,combat:false,exploring:false,gameover:false,playerTurn:true,classKey,className:data.name,relics:[],explore:null,shop:null
+  enemy:null,combat:false,exploring:false,gameover:false,playerTurn:true,classKey,className:data.name,relics:[],explore:null,shop:null,pendingBossAdvance:false
  };
 }
 
@@ -507,7 +508,6 @@ function movePlayer(dx,dy){
   if(hasRelic("turnblock3"))state.block+=3;
   if(hasRelic("tempenergy2")){state.energy+=2;state.tempEnergy+=2}
   if(hasRelic("worldstone")){state.energy+=2;state.tempEnergy+=2}
-   if(hasRelic("supplycooler"))state.hp=Math.min(state.maxHp,state.hp+5);
   render();
   log(`You encountered ${state.enemy.name}! ${ex.monsters.length} monster${ex.monsters.length===1?"":"s"} remain. You cannot progress until every enemy in this room is defeated.`);
   return;
@@ -697,6 +697,8 @@ function winCombat(){
  }else{
   state.rooms[state.room].done=true;
  }
+ // Mark the boss room explicitly so dungeon progression never depends on exploration state.
+ if(state.rooms[state.room]?.type === "boss") state.pendingBossAdvance=true;
  state.gold+=e.gold+(hasRelic('normalgold2')&&state.rooms[state.room].type==='enemy'?2:0);
  gainXP(e.xp+(hasRelic('xp10')?10:0));
  if(hasRelic('heal3'))state.hp=Math.min(state.maxHp,state.hp+3);
@@ -708,8 +710,9 @@ function winCombat(){
 
  modal("Victory!","Choose your reward.",[
   ["Add Card",()=>{
-   const a=randomCollectible(), b=randomCollectible();
-   showCardChoice("Choose a New Card",[a,b],card=>{
+   const choices=[randomCollectible(),randomCollectible()].filter(Boolean);
+   if(!choices.length){ closeModal(); finishCombatRoom(); return; }
+   showCardChoice("Choose a New Card",choices,card=>{
     state.deck.push(cardCopy(card));
    });
   }],
@@ -745,26 +748,45 @@ function winCombat(){
  ]);
 }
 function finishCombatRoom(){
- const room=state.rooms[state.room];
- // A boss room is complete once its boss is defeated. Always advance the run
- // after the reward instead of leaving the player in the cleared boss room.
- if(room && room.type === "boss" && room.done){
-  closeModal();
-  state.explore=null;
-  state.enemy=null;
-  state.combat=false;
-  state.exploring=false;
-  log(state.floor < 5 ? `Dungeon ${state.floor} cleared! Preparing Dungeon ${state.floor+1}.` : "All five dungeons cleared!");
-  nextRoom();
+ closeModal();
+ // Boss progression is deliberately explicit. This prevents the game from getting
+ // stuck on Dungeon 1 if a reward modal changes/clears exploration state.
+ if(state.pendingBossAdvance === true || state.rooms[state.room]?.type === "boss"){
+  state.pendingBossAdvance=false;
+  advanceDungeon();
   return;
  }
  if(state.explore && state.explore.monsters.length>0){
-  closeModal();
   resumeExploration();
  }else{
-  closeModal();
   nextRoom();
  }
+}
+
+function advanceDungeon(){
+ if(state.floor>=5){ victory(); return; }
+ const clearedFloor=state.floor;
+ state.floor=clearedFloor+1;
+ state.room=0;
+ state.maxHp+=10;
+ state.hp=state.maxHp;
+ state.rooms=[];
+ state.explore=null;
+ state.enemy=null;
+ state.combat=false;
+ state.exploring=false;
+ state.shop=null;
+ state.block=0;
+ state.energy=state.maxEnergy;
+ state.tempEnergy=0;
+ state.pendingBossAdvance=false;
+ state.hand=[];
+ state.draw=[];
+ state.discard=[];
+ makeRooms();
+ if(hasRelic("dungeongold1"))state.gold+=1;
+ log(`Dungeon ${state.floor} begins. The enemies grow stronger.`);
+ startRoom();
 }
 
 function gainXP(amount){
@@ -797,11 +819,12 @@ function randomShopCard(){
  const rarityWeights={Common:55,Uncommon:28,Rare:12,Epic:4,Legendary:1};
  let roll=Math.random()*100, rarity="Common";
  for(const [r,w] of Object.entries(rarityWeights)){ if((roll-=w)<=0){rarity=r;break;} }
- const pool=cards.filter(c=>c.rarity===rarity);
- return pool[Math.floor(Math.random()*pool.length)];
+ let pool=cards.filter(c=>c && c.rarity===rarity);
+ if(!pool.length) pool=cards.filter(Boolean);
+ return pool.length ? pool[Math.floor(Math.random()*pool.length)] : null;
 }
 function buildShop(){
- const cards=[randomShopCard(),randomShopCard(),randomShopCard()];
+ const cards=[randomShopCard(),randomShopCard(),randomShopCard()].filter(Boolean);
  const relics=[];
  const first=randomRelic();
  if(first)relics.push(first);
@@ -848,7 +871,7 @@ function openShop(){
  }]);
  if(!state.shop.rerolled) buttons.push([`Reroll stock — ${shopPrice(35)}g`,()=>{ const price=shopPrice(35); if(state.gold<price){log("Not enough gold.");return;} state.gold-=price; buildShop(); state.shop.rerolled=true; log("The shopkeeper refreshes the stock."); render(); openShop(); }]);
  buttons.push(["Leave Shop",()=>{ state.rooms[state.room].done=true; state.shop=null; closeModal(); nextRoom(); }]);
- modal("Dungeon Shop",`Spend your gold wisely. Dungeon ${state.floor} prices increase as the run goes deeper.`,buttons);
+ modal("Dungeon Shop",`GOLD AVAILABLE: ${state.gold}\n\nSpend your gold wisely. Dungeon ${state.floor} prices increase as the run goes deeper.`,buttons);
  render();
 }
 
@@ -866,7 +889,7 @@ function eventRoom(){
 }
 
 function nextRoom(){
- // Prevent a stale exploration/combat state from blocking the next room.
+ // Prevent stale combat/exploration state from blocking the next room.
  state.combat=false;
  state.exploring=false;
  state.enemy=null;
@@ -875,17 +898,10 @@ function nextRoom(){
  state.energy=state.maxEnergy;
  state.tempEnergy=0;
  if(state.room>=state.rooms.length-1){
-  if(state.floor>=5){ victory(); return; }
-  state.floor++;
-  state.maxHp+=10;
-  state.hp=state.maxHp;
-  makeRooms();
-  state.room=0;
-  if(hasRelic("dungeongold1"))state.gold+=1;
-  log(`Dungeon ${state.floor} begins. The enemies grow stronger.`);
- }else{
-  state.room++;
+  advanceDungeon();
+  return;
  }
+ state.room++;
  startRoom();
 }
 
